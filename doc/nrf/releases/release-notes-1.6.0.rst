@@ -591,3 +591,53 @@ Known issues
 ************
 
 See `known issues for nRF Connect SDK v1.6.0`_ for the list of issues valid for this release.
+
+Zephyr Workqueue API Migration
+******************************
+
+|NCS| 1.6.0 includes changes to the Zephyr Workqueue API introduced as part of `Zephyr pull request #29618 <https://github.com/zephyrproject-rtos/zephyr/pull/29618>`_.
+This pull request deprecates part of the current Workqueue API, and introduces new APIs to cover the same usage scenarios.
+The new API fixes a set of internal issues in the old design, discussed in `Zephyr issue #27356 <https://github.com/zephyrproject-rtos/zephyr/issues/27356>`_.
+
+It is recommended that all applications migrate to the new ``k_work`` API when upgrading to |NCS| 1.6.0.
+All of the deprecated APIs have a corresponding new API that can be used as a drop-in replacement, except :c:func:`k_delayed_work_submit_for_queue` and :c:func:`k_delayed_work_submit`.
+These functions have both been split into two functions to cover two different usage scenarios:
+
+- :c:func:`k_work_reschedule` (and :c:func:`k_work_reschedule_for_queue`) behaves the same way as the old :c:func:`k_delayed_work_submit` function, and will resubmit the work item even if it has already been queued.
+- :c:func:`k_work_schedule` (and :c:func:`k_work_schedule_for_queue`) will only submit the work item if it has not already been queued.
+
+While replacing the deprecated APIs with their new counterparts will fix most of the internal issues observed in the old Workqueue implementation, application developers should also make sure they follow the Workqueue best practices, documented under the "Workqueue Best Practices" section of :ref:`zephyr:workqueues_v2`, to avoid the most common pitfalls.
+
+The following is a full list of the deprecated Workqueue APIs in |NCS| 1.6.0 and their respective replacements:
+
+.. list-table:: ``k_work`` API replacements
+   :header-rows: 1
+
+   * - Deprecated API
+     - Corresponding new API
+   * - :c:func:`k_work_pending`
+     - :c:func:`k_work_is_pending`
+   * - :c:func:`k_work_q_start`
+     - :c:func:`k_work_queue_start`
+   * - :c:func:`k_delayed_work`
+     - :c:func:`k_work_delayable`
+   * - :c:func:`k_delayed_work_init`
+     - :c:func:`k_work_init_delayable`
+   * - :c:func:`k_delayed_work_submit_to_queue`
+     - :c:func:`k_work_schedule_for_queue` or :c:func:`k_work_reschedule_for_queue`
+   * - :c:func:`k_delayed_work_submit`
+     - :c:func:`k_work_schedule` or :c:func:`k_work_reschedule`
+   * - :c:func:`k_delayed_work_pending`
+     - :c:func:`k_work_delayable_is_pending`
+   * - :c:func:`k_delayed_work_cancel`
+     - :c:func:`k_work_cancel_delayable`
+   * - :c:func:`k_delayed_work_remaining_get`
+     - :c:func:`k_work_delayable_remaining_get`
+   * - :c:func:`k_delayed_work_expires_ticks`
+     - :c:func:`k_work_delayable_expires_get`
+   * - :c:func:`k_delayed_work_remaining_ticks`
+     - :c:func:`k_work_delayable_remaining_get`
+   * - :c:macro:`K_DELAYED_WORK_DEFINE`
+     - :c:macro:`K_WORK_DELAYABLE_DEFINE`
+
+For more information about the new Workqueue API, please see :ref:`zephyr:workqueues_v2`.

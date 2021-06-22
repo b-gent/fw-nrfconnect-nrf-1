@@ -282,7 +282,24 @@ The following list summarizes the most important changes inherited from the upst
 Documentation
 =============
 
-There are no entries for this section yet.
+In addition to documentation related to the changes listed above, the following documentation has been updated:
+
+* Restructured the bootloader-related guides into a self-contained section covering bootloader architecture, firmware updates, and user guides.
+
+   * Added the following user guides:
+
+      * :ref:`ug_bootloader_adding`
+      * :ref:`ug_bootloader_testing`
+      * :ref:`ug_bootloader_external_flash`
+      * :ref:`ug_bootloader_config`
+      * :ref:`ug_fw_update`
+   * :ref:`app_bootloaders` - Bootloader and firmware update guide header page
+   * :ref:`bootloader` - Refactored to include more information about implemented features
+   * :ref:`ug_bootloader` - Updated architecture information for clarifying first- and second-stage bootloader design
+   * "Immutable bootloader" references have been changed to "|NSIB|"
+
+* :ref:`ug_multi_image` - Added more information regarding child image usage, configuration options, and image-specific variables
+* :ref:`partition_manager` - Added section about partition reports
 
 Known issues
 ************

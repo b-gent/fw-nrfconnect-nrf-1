@@ -442,7 +442,85 @@ In order to facilitate the migration to the new include prefix, a script to auto
 Changes in PWM API
 ******************
 
-Zephyr v3.x.x introduces changes in the PWM API that required modifying the board definitions.
+Zephyr v3.x.x introduces changes in the PWM API that require modifying the board definitions.
 Old board definitions will cause a compilation error and calling the old API functions will result in warnings stating that these functions are deprecated.
 
-Required action:
+Required actions:
+- ``pwms`` properties in devicetree nodes need to be extended with two more cells (with period and flags) and now they need to specify PWM channels, not pin numbers
+- calls to the deprecated ``pwm_pin_set_cycles`` function need to be replaced with calls to the :c:func:`pwm_set_cycles` function
+- calls to the deprecated ``pwm_pin_set_usec`` and ``pwm_pin_set_nsec`` functions need to be replaced with calls to the :c:func:`pwm_set` function with the period and pulse values wrapped in the :c:macro:`PWM_USEC` or :c:macro:`PWM_NSEC` macro, respectively
+
+Please note that the :c:func:`pwm_set` and :c:func:`pwm_set_cycles` functions take as a parameter a PWM channel, not a pin number as the deprecated functions did, and that the ``flags`` parameter is now supported, so either the :c:macro:`PWM_POLARITY_INVERTED` or :c:macro:`PWM_POLARITY_NORMAL` flag needs to be provided in each call.
+Wherever possible, it is recommended to use the newly introduced :c:macro:`PWM_DT_SPEC_GET` macro (or another suitable one from its family) to obtain PWM information from devicetree, and then use the :c:func:`pwm_set_dt` or :c:func:`pwm_set_pulse_dt` function instead of :c:func:`pwm_set`.
+
+For example, for PWM channels defined as follows:
+
+.. code-block:: devicetree
+
+    pwm0_default: pwm0_default {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 0, 11)>;
+            nordic,invert;
+        };
+        group2 {
+            psels = <NRF_PSEL(PWM_OUT3, 1, 5)>;
+        };
+    };
+
+    pwm0_sleep: pwm0_sleep {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 0, 11)>,
+                    <NRF_PSEL(PWM_OUT3, 1, 5)>;
+            low-power-enable;
+        };
+    };
+
+    &pwm0 {
+        status = "okay";
+        pinctrl-0 = <&pwm0_default>;
+        pinctrl-1 = <&pwm0_sleep>;
+        pinctrl-names = "default", "sleep";
+    };
+
+it is needed to update the PWM LED definitions that use those channels:
+
+.. code-block:: devicetree
+
+    /* old defintions that will no longer work */
+    pwm_led0: pwm_led_0 {
+        pwms = <&pwm0 11>;
+    };
+    pwm_led1: pwm_led_1 {
+        pwms = <&pwm0 37>;
+    };
+
+in the following way (the period lengths, set here arbitrarily to commonly used value of 20 ms, are provided as default ones, they can be overridden in the actual PWM API calls if needed):
+
+.. code-block:: devicetree
+
+    /* updated definitions */
+    pwm_led0: pwm_led_0 {
+        pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+    };
+    pwm_led1: pwm_led_1 {
+        pwms = <&pwm0 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+    };
+
+Then, the definitions can be used in PWM API calls like this:
+
+.. code-block:: c
+
+    #define PWM_LED0_NODE DT_NODELABEL(pwm_led0)
+    #define PWM_LED3_NODE DT_NODELABEL(pwm_led3)
+
+    static const struct pwm_dt_spec led0_spec = PWM_DT_SPEC_GET(PWM_LED0_NODE);
+    static const struct pwm_dt_spec led3_spec = PWM_DT_SPEC_GET(PWM_LED3_NODE);
+
+    /* ... */
+
+    /* Use 10 ms period for LED0 to override the default 20 ms from devicetree. */
+    ret = pwm_set_dt(&led0_spec, PWM_MSEC(10), PWM_USEC(pulse_us));
+
+    /* ... */
+
+    ret = pwm_set_pulse_dt(&led3_spec, PWM_USEC(pulse_us));
